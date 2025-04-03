@@ -6,3 +6,5 @@ pandas
 numpy
 fiona
 pyproj
+folium
+streamlit-folium

@@ -103,3 +103,37 @@ if uploaded_file:
             file_name="rotas_resultado.zip",
             mime="application/zip"
         )
+       
+# 🔍 Visualizar as linhas geradas no mapa (linhas_rotas.gpkg)
+st.subheader("Visualização das Rotas no Mapa")
+
+import folium
+from streamlit_folium import st_folium
+
+# Reprojetar para WGS84 para visualização web
+gdf_linhas_latlon = gdf_linhas.to_crs("EPSG:4326")
+
+# Criar o mapa centralizado na geometria
+centro = gdf_linhas_latlon.unary_union.centroid
+m = folium.Map(location=[centro.y, centro.x], zoom_start=13)
+
+# Gerar cores diferentes para cada rota
+import random
+random.seed(42)
+rotas = gdf_linhas_latlon["rota_id"].unique()
+cores = {rota: f"#{random.randint(0, 0xFFFFFF):06x}" for rota in rotas}
+
+# Adicionar cada linha com cor única
+for _, row in gdf_linhas_latlon.iterrows():
+    folium.GeoJson(
+        row.geometry,
+        name=f"Rota {row['rota_id']}",
+        style_function=lambda feature, color=cores[row['rota_id']]: {
+            "color": color,
+            "weight": 4
+        }
+    ).add_to(m)
+
+# Mostrar o mapa interativo no Streamlit
+st_folium(m, width=700, height=500)
+

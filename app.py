@@ -103,5 +103,49 @@ if uploaded_file:
         import random
         random.seed(42)
         rotas_unicas = gdf_latlon["rota_id"].unique()
-        cores_rotas = {
-            rota: f"#{random.randint(0, 0xFFFFFF):06x}" for
+        cores_rotas = {}
+        for rota in rotas_unicas:
+            cor = f"#{random.randint(0, 0xFFFFFF):06x}"
+            cores_rotas[rota] = cor
+
+        # Adicionar linhas com função style segura
+        for _, row in gdf_linhas_latlon.iterrows():
+            cor_rota = cores_rotas[row['rota_id']]
+            def style_func(x, cor=cor_rota):
+                return {"color": cor, "weight": 3}
+            folium.GeoJson(
+                row.geometry,
+                name=f"Rota {row['rota_id']}",
+                style_function=style_func
+            ).add_to(m)
+
+        # Adicionar pontos
+        for _, row in gdf_latlon.iterrows():
+            folium.CircleMarker(
+                location=[row.geometry.y, row.geometry.x],
+                radius=3,
+                popup=f"Rota {row['rota_id']}<br>Ordem: {row['ordem_visita']}",
+                color=cores_rotas[row['rota_id']],
+                fill=True,
+                fill_opacity=0.8
+            ).add_to(m)
+
+        st_folium(m, width=700, height=500)
+
+        # Botão de download dos resultados em GeoPackage
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zip_buffer:
+            pontos_path = os.path.join(extract_path, "pontos_com_rotas.gpkg")
+            linhas_path = os.path.join(extract_path, "linhas_rotas.gpkg")
+            gdf.to_file(pontos_path, layer="pontos", driver="GPKG")
+            gdf_linhas.to_file(linhas_path, layer="linhas", driver="GPKG")
+
+            zip_buffer.write(pontos_path, arcname="pontos_com_rotas.gpkg")
+            zip_buffer.write(linhas_path, arcname="linhas_rotas.gpkg")
+
+        st.download_button(
+            label="📂 Baixar Resultado (GeoPackage ZIP)",
+            data=buffer.getvalue(),
+            file_name="rotas_resultado.zip",
+            mime="application/zip"
+        )

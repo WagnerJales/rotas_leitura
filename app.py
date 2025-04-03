@@ -42,11 +42,10 @@ if uploaded_file:
     else:
         shp_path = os.path.join(extract_path, shp_files[0])
 
-        # Ler os dados
+        # Ler os dados e definir CRS se ausente
         gdf = gpd.read_file(shp_path)
         if gdf.crs is None:
-            st.error("O shapefile não possui sistema de coordenadas definido (CRS). Por favor, defina um CRS no seu GIS antes de enviar.")
-            st.stop()
+            gdf.set_crs("EPSG:4326", inplace=True)
 
         gdf = gdf.to_crs("EPSG:31983")
         gdf = gdf.reset_index(drop=True)

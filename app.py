@@ -15,7 +15,7 @@ from folium import Choropleth, Circle, Marker, GeoJson
 from folium.plugins import MarkerCluster
 
 st.set_page_config(page_title="Gerador de Rotas por Cluster", layout="centered")
-st.title("🚗 Gerador de Rotas de Visita por Agrupamento")
+st.title("Gerador de Rotas de Visita por Agrupamento")
 
 # Entrada do usuário
 max_pontos_por_rota = st.number_input(

@@ -9,10 +9,6 @@ from scipy.spatial.distance import cdist
 import zipfile
 import os
 from io import BytesIO
-import folium
-from streamlit_folium import st_folium
-from folium import Choropleth, Circle, Marker, GeoJson
-from folium.plugins import MarkerCluster
 
 st.set_page_config(page_title="Gerador de Rotas por Cluster", layout="centered")
 st.title("🚗 Gerador de Rotas de Visita por Agrupamento")
@@ -42,12 +38,8 @@ if uploaded_file:
     else:
         shp_path = os.path.join(extract_path, shp_files[0])
 
-        # Ler os dados e definir CRS se ausente
-        gdf = gpd.read_file(shp_path)
-        if gdf.crs is None:
-            gdf.set_crs("EPSG:4326", inplace=True)
-
-        gdf = gdf.to_crs("EPSG:31983")
+        # Ler os dados
+        gdf = gpd.read_file(shp_path).to_crs("EPSG:31983")
         gdf = gdf.reset_index(drop=True)
         gdf["ponto_id"] = gdf.index
 
@@ -94,48 +86,6 @@ if uploaded_file:
         # Mostrar número de rotas
         st.success(f"Rotas geradas: {gdf['rota_id'].nunique()}")
 
-        # Visualização no mapa com Folium
-        st.subheader("Visualização das Rotas no Mapa")
-        gdf_latlon = gdf.to_crs("EPSG:4326")
-        gdf_linhas_latlon = gdf_linhas.to_crs("EPSG:4326")
-
-        # Criar o mapa
-        center = gdf_latlon.geometry.unary_union.centroid
-        m = folium.Map(location=[center.y, center.x], zoom_start=13)
-
-        # Cores para rotas
-        import random
-        random.seed(42)
-        rotas_unicas = gdf_latlon["rota_id"].unique()
-        cores_rotas = {}
-        for rota in rotas_unicas:
-            cor = f"#{random.randint(0, 0xFFFFFF):06x}"
-            cores_rotas[rota] = cor
-
-        # Adicionar linhas com função style segura
-        for _, row in gdf_linhas_latlon.iterrows():
-            cor_rota = cores_rotas[row['rota_id']]
-            def style_func(x, cor=cor_rota):
-                return {"color": cor, "weight": 3}
-            folium.GeoJson(
-                row.geometry,
-                name=f"Rota {row['rota_id']}",
-                style_function=style_func
-            ).add_to(m)
-
-        # Adicionar pontos
-        for _, row in gdf_latlon.iterrows():
-            folium.CircleMarker(
-                location=[row.geometry.y, row.geometry.x],
-                radius=3,
-                popup=f"Rota {row['rota_id']}<br>Ordem: {row['ordem_visita']}",
-                color=cores_rotas[row['rota_id']],
-                fill=True,
-                fill_opacity=0.8
-            ).add_to(m)
-
-        st_folium(m, width=700, height=500)
-
         # Botão de download dos resultados em GeoPackage
         buffer = BytesIO()
         with zipfile.ZipFile(buffer, "w") as zip_buffer:
@@ -153,4 +103,3 @@ if uploaded_file:
             file_name="rotas_resultado.zip",
             mime="application/zip"
         )
-

@@ -142,27 +142,3 @@ if uploaded_file:
             file_name="rotas_resultado.zip",
             mime="application/zip"
         )
-
-        # Visualização complementar: apenas linhas do arquivo gerado
-        st.subheader("Rotas Geradas (Visualização de linhas_rotas.gpkg)")
-        gdf_linhas_gpkg = gpd.read_file(linhas_path)
-        gdf_linhas_gpkg = gdf_linhas_gpkg.to_crs("EPSG:4326")
-
-        center2 = gdf_linhas_gpkg.unary_union.centroid
-        m2 = folium.Map(location=[center2.y, center2.x], zoom_start=13)
-
-        cores_rotas_2 = {}
-        for rota in gdf_linhas_gpkg["rota_id"].unique():
-            cores_rotas_2[rota] = f"#{random.randint(0, 0xFFFFFF):06x}"
-
-        for _, row in gdf_linhas_gpkg.iterrows():
-            cor_rota = cores_rotas_2[row['rota_id']]
-            def style_func2(x, cor=cor_rota):
-                return {"color": cor, "weight": 3}
-            folium.GeoJson(
-                row.geometry,
-                name=f"Rota {row['rota_id']}",
-                style_function=style_func2
-            ).add_to(m2)
-
-        st_folium(m2, width=700, height=500)

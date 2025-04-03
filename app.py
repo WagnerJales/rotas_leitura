@@ -9,6 +9,7 @@ from scipy.spatial.distance import cdist
 import zipfile
 import os
 from io import BytesIO
+import pydeck as pdk
 
 st.set_page_config(page_title="Gerador de Rotas por Cluster", layout="centered")
 st.title("🚗 Gerador de Rotas de Visita por Agrupamento")
@@ -86,6 +87,35 @@ if uploaded_file:
         # Mostrar número de rotas
         st.success(f"Rotas geradas: {gdf['rota_id'].nunique()}")
 
+        # Mostrar mapa com rotas
+        st.subheader("Visualização das Rotas")
+        gdf_linhas_wgs84 = gdf_linhas.to_crs(epsg=4326)
+        line_data = gdf_linhas_wgs84.explode(index_parts=False)
+
+        map_lines = []
+        for _, row in line_data.iterrows():
+            if isinstance(row.geometry, LineString):
+                coords = list(row.geometry.coords)
+                map_lines.append({
+                    "coordinates": coords,
+                    "rota_id": row.rota_id
+                })
+
+        line_layer = pdk.Layer(
+            "PathLayer",
+            data=map_lines,
+            get_path="coordinates",
+            get_width=3,
+            get_color=[255, 0, 0],
+            pickable=True
+        )
+
+        # Centralizar o mapa na primeira linha
+        if map_lines:
+            lon, lat = map_lines[0]['coordinates'][0]
+            view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=13)
+            st.pydeck_chart(pdk.Deck(layers=[line_layer], initial_view_state=view_state))
+
         # Botão de download dos resultados em GeoPackage
         buffer = BytesIO()
         with zipfile.ZipFile(buffer, "w") as zip_buffer:
@@ -103,3 +133,4 @@ if uploaded_file:
             file_name="rotas_resultado.zip",
             mime="application/zip"
         )
+

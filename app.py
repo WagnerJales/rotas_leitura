@@ -43,7 +43,12 @@ if uploaded_file:
         shp_path = os.path.join(extract_path, shp_files[0])
 
         # Ler os dados
-        gdf = gpd.read_file(shp_path).to_crs("EPSG:31983")
+        gdf = gpd.read_file(shp_path)
+        if gdf.crs is None:
+            st.error("O shapefile não possui sistema de coordenadas definido (CRS). Por favor, defina um CRS no seu GIS antes de enviar.")
+            st.stop()
+
+        gdf = gdf.to_crs("EPSG:31983")
         gdf = gdf.reset_index(drop=True)
         gdf["ponto_id"] = gdf.index
 
@@ -149,3 +154,4 @@ if uploaded_file:
             file_name="rotas_resultado.zip",
             mime="application/zip"
         )
+

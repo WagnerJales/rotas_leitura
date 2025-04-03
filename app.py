@@ -9,7 +9,10 @@ from scipy.spatial.distance import cdist
 import zipfile
 import os
 from io import BytesIO
-import pydeck as pdk
+import folium
+from streamlit_folium import st_folium
+from folium import Choropleth, Circle, Marker, GeoJson
+from folium.plugins import MarkerCluster
 
 st.set_page_config(page_title="Gerador de Rotas por Cluster", layout="centered")
 st.title("🚗 Gerador de Rotas de Visita por Agrupamento")
@@ -87,50 +90,18 @@ if uploaded_file:
         # Mostrar número de rotas
         st.success(f"Rotas geradas: {gdf['rota_id'].nunique()}")
 
-        # Mostrar mapa com rotas
-        st.subheader("Visualização das Rotas")
-        gdf_linhas_wgs84 = gdf_linhas.to_crs(epsg=4326)
-        line_data = gdf_linhas_wgs84.explode(index_parts=False)
+        # Visualização no mapa com Folium
+        st.subheader("Visualização das Rotas no Mapa")
+        gdf_latlon = gdf.to_crs("EPSG:4326")
+        gdf_linhas_latlon = gdf_linhas.to_crs("EPSG:4326")
 
-        map_lines = []
-        for _, row in line_data.iterrows():
-            if isinstance(row.geometry, LineString):
-                coords = list(row.geometry.coords)
-                map_lines.append({
-                    "coordinates": coords,
-                    "rota_id": row.rota_id
-                })
+        # Criar o mapa
+        center = gdf_latlon.geometry.unary_union.centroid
+        m = folium.Map(location=[center.y, center.x], zoom_start=13)
 
-        line_layer = pdk.Layer(
-            "PathLayer",
-            data=map_lines,
-            get_path="coordinates",
-            get_width=3,
-            get_color=[255, 0, 0],
-            pickable=True
-        )
-
-        # Centralizar o mapa na primeira linha
-        if map_lines:
-            lon, lat = map_lines[0]['coordinates'][0]
-            view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=13)
-            st.pydeck_chart(pdk.Deck(layers=[line_layer], initial_view_state=view_state))
-
-        # Botão de download dos resultados em GeoPackage
-        buffer = BytesIO()
-        with zipfile.ZipFile(buffer, "w") as zip_buffer:
-            pontos_path = os.path.join(extract_path, "pontos_com_rotas.gpkg")
-            linhas_path = os.path.join(extract_path, "linhas_rotas.gpkg")
-            gdf.to_file(pontos_path, layer="pontos", driver="GPKG")
-            gdf_linhas.to_file(linhas_path, layer="linhas", driver="GPKG")
-
-            zip_buffer.write(pontos_path, arcname="pontos_com_rotas.gpkg")
-            zip_buffer.write(linhas_path, arcname="linhas_rotas.gpkg")
-
-        st.download_button(
-            label="📂 Baixar Resultado (GeoPackage ZIP)",
-            data=buffer.getvalue(),
-            file_name="rotas_resultado.zip",
-            mime="application/zip"
-        )
-
+        # Cores para rotas
+        import random
+        random.seed(42)
+        rotas_unicas = gdf_latlon["rota_id"].unique()
+        cores_rotas = {
+            rota: f"#{random.randint(0, 0xFFFFFF):06x}" for

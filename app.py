@@ -19,7 +19,7 @@ st.title("Gerador de Rotas Comerciais")
 
 # Entrada do usuário
 max_pontos_por_rota = st.number_input(
-    label="Quantidade máxima de pontos por rota:",
+    label="Quantidade máxima de matrículas por rota:",
     min_value=10,
     max_value=1000,
     value=400,
